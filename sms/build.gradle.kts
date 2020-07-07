@@ -5,7 +5,7 @@ import com.github.aliakseikaraliou.oner.buildSrc.KAPT
 import com.github.aliakseikaraliou.oner.buildSrc.Project
 
 plugins {
-    id("com.android.application")
+    id("com.android.library")
     id("kotlin-android")
     id("kotlin-android-extensions")
     id("kotlin-kapt")
@@ -16,7 +16,6 @@ android {
     buildToolsVersion = "29.0.3"
 
     defaultConfig {
-        applicationId = "com.github.aliakseikaraliou.oner"
         minSdkVersion(21)
         targetSdkVersion(30)
         versionCode = 1
@@ -37,6 +36,7 @@ dependencies {
     implementation(project(Project.BASE))
 
     implementation(Kotlin.STDLIB)
+    implementation(Kotlin.COROUTINES)
 
     implementation(Android.CORE)
     implementation(Android.APPCOMPAT)

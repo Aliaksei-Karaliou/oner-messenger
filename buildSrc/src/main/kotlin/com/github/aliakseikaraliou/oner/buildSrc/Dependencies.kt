@@ -7,6 +7,8 @@ object Dependencies {
     }
 
     object Kotlin {
+        const val COROUTINES =
+            "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.KOTLIN_COROUTINES}"
         const val STDLIB = "org.jetbrains.kotlin:kotlin-stdlib:${Versions.KOTLIN}"
     }
 
@@ -19,11 +21,13 @@ object KAPT {
 
 object Project {
     const val BASE = ":base"
+    const val SMS = ":sms"
 }
 
 object Versions {
     internal const val ANDROID_APP_COMPAT = "1.1.0"
     internal const val ANDROID_CORE = "1.3.0"
     const val KOTLIN = "1.3.72"
+    internal const val KOTLIN_COROUTINES = "1.3.7"
     internal const val DAGGER = "2.28.1"
 }

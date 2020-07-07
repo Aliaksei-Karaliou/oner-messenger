@@ -1,5 +1,6 @@
 package com.github.aliakseikaraliou.oner.base.models.contact
 
 interface Contact {
-    val fullname: String
+    val id: String
+    val displayName: String
 }

@@ -1,8 +1,9 @@
 import com.github.aliakseikaraliou.oner.buildSrc.Dependencies.DAGGER
+import com.github.aliakseikaraliou.oner.buildSrc.Dependencies.Kotlin
 import com.github.aliakseikaraliou.oner.buildSrc.KAPT
 
 plugins {
-    id("com.android.application")
+    id("com.android.library")
     id("kotlin-android")
     id("kotlin-android-extensions")
     id("kotlin-kapt")
@@ -13,7 +14,6 @@ android {
     buildToolsVersion = "29.0.3"
 
     defaultConfig {
-        applicationId = "com.github.aliakseikaraliou.oner"
         minSdkVersion(21)
         targetSdkVersion(30)
         versionCode = 1
@@ -31,7 +31,9 @@ android {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.3.72")
+    implementation(Kotlin.STDLIB)
+    implementation(Kotlin.COROUTINES)
+
     implementation("androidx.core:core-ktx:1.3.0")
     implementation("androidx.appcompat:appcompat:1.1.0")
     implementation("androidx.lifecycle:lifecycle-extensions:2.2.0")
