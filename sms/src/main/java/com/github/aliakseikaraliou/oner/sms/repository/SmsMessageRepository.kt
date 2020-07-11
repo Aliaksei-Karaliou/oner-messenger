@@ -1,59 +1,101 @@
 package com.github.aliakseikaraliou.oner.sms.repository
 
 import android.content.ContentResolver
-import android.net.Uri
+import android.provider.Telephony
+import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_DRAFT
+import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_FAILED
+import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_INBOX
+import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_OUTBOX
+import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_QUEUED
+import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT
+import android.provider.Telephony.TextBasedSmsColumns.READ
+import android.provider.Telephony.TextBasedSmsColumns.THREAD_ID
 import com.github.aliakseikaraliou.oner.base.Constants.ADDRESS
 import com.github.aliakseikaraliou.oner.base.Constants.BODY
 import com.github.aliakseikaraliou.oner.base.Constants.DATE
 import com.github.aliakseikaraliou.oner.base.Constants.TYPE
 import com.github.aliakseikaraliou.oner.base.Constants._ID
+import com.github.aliakseikaraliou.oner.base.extentions.CursorWrapper
+import com.github.aliakseikaraliou.oner.base.extentions.toWrapper
+import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.DRAFT
+import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.FAILED
+import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.OUTBOX
+import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.QUEUED
+import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.SENT
 import com.github.aliakseikaraliou.oner.base.repository.MessageRepository
 import com.github.aliakseikaraliou.oner.sms.models.SmsAccount
+import com.github.aliakseikaraliou.oner.sms.models.contact.SmsChannel
 import com.github.aliakseikaraliou.oner.sms.models.conversation.SmsConversationPreview
+import com.github.aliakseikaraliou.oner.sms.models.message.SmsIncomingMessage
+import com.github.aliakseikaraliou.oner.sms.models.message.SmsOutgoingMessage
+import java.util.*
 import javax.inject.Inject
 
-class SmsMessageRepository @Inject constructor(val contentResolver: ContentResolver) :
+class SmsMessageRepository @Inject constructor(private val contentResolver: ContentResolver) :
     MessageRepository<SmsAccount> {
 
     private val contactRepository = ContactRepository(contentResolver)
 
     override suspend fun loadConversationPreviews(account: SmsAccount): List<SmsConversationPreview> {
-        val uri = Uri.parse("content://contacts/people")
-        val params = arrayOf(_ID, ADDRESS, DATE, BODY, TYPE)
+        val uri = Telephony.Sms.CONTENT_URI
+        val params = arrayOf(_ID, ADDRESS, DATE, BODY, TYPE, THREAD_ID, READ)
 
-        val messageMap = mutableMapOf<Long, SmsConversationPreview>()
-
-        contactRepository.loadAll()
+        val messages = mutableListOf<SmsConversationPreview>()
 
         contentResolver
-            .query(uri, null, null, null, null)
+            .query(uri, params, "$THREAD_ID IS NOT NULL) GROUP BY ($THREAD_ID", null, null)
+            ?.toWrapper()
             ?.use { cursor ->
-                val paramMap = cursor.columnNames
-                    .map { it to cursor.getColumnIndex(it) }
-                    .toMap()
-
                 while (cursor.moveToNext()) {
-                    var toMap = cursor.columnNames
-                        .map { it to cursor.getString(cursor.getColumnIndex(it)) }
-                        .toMap()
-//                    val id = cursor.getLong(paramMap.getValue(_ID))
-//                    val address = cursor.getString(paramMap.getValue(ADDRESS))
-//                    val date = Date(cursor.getLong(paramMap.getValue(DATE)))
-//                    val body = cursor.getString(paramMap.getValue(BODY))
-//                    when (cursor.getInt(paramMap.getValue(TYPE))) {
-//                        Telephony.TextBasedSmsColumns.MESSAGE_TYPE_INBOX -> parseIncoming()
-//                        Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT -> parseOutgoing()
-//                    }
-                    val t = 0
+                    val smsMessage = when (cursor.getInt(TYPE)) {
+                        MESSAGE_TYPE_INBOX -> parseIncoming(cursor)
+                        MESSAGE_TYPE_SENT,
+                        MESSAGE_TYPE_OUTBOX,
+                        MESSAGE_TYPE_FAILED,
+                        MESSAGE_TYPE_QUEUED -> parseOutgoing(cursor)
+                        else -> throw IllegalArgumentException(
+                            "No sms message status defined:${cursor.getInt(
+                                TYPE
+                            )}"
+                        )
+                    }
+                    val smsConversationPreview = SmsConversationPreview(smsMessage)
+                    messages.add(smsConversationPreview)
                 }
             }
-
-        return listOf()
+        return messages
     }
 
-    private fun parseIncoming() {
+    private fun parseIncoming(cursor: CursorWrapper): SmsIncomingMessage {
+        val id = cursor.getLong(_ID)
+        val contact = contactRepository.loadByAddress(cursor.getString(ADDRESS))
+            ?: SmsChannel(cursor.getLong(THREAD_ID), cursor.getString(ADDRESS))
+        val date = Date(cursor.getLong(DATE))
+        val body = cursor.getString(BODY)
+        val isRead = cursor.getBoolean(READ)
+        val threadId = cursor.getInt(THREAD_ID)
+
+        return SmsIncomingMessage(id, contact, body, date, isRead, threadId)
     }
 
-    private fun parseOutgoing() {
+    private fun parseOutgoing(cursor: CursorWrapper): SmsOutgoingMessage {
+        val id = cursor.getLong(_ID)
+        val contact = contactRepository.loadByAddress(cursor.getString(ADDRESS))
+            ?: SmsChannel(cursor.getLong(THREAD_ID), cursor.getString(ADDRESS))
+        val date = Date(cursor.getLong(DATE))
+        val body = cursor.getString(BODY)
+        val status = parseMessageStatus(cursor.getInt(TYPE))
+        val threadId = cursor.getInt(THREAD_ID)
+
+        return SmsOutgoingMessage(id, contact, body, date, status, threadId)
+    }
+
+    private fun parseMessageStatus(status: Int) = when (status) {
+        MESSAGE_TYPE_SENT -> SENT
+        MESSAGE_TYPE_OUTBOX -> OUTBOX
+        MESSAGE_TYPE_FAILED -> FAILED
+        MESSAGE_TYPE_QUEUED -> QUEUED
+        MESSAGE_TYPE_DRAFT -> DRAFT
+        else -> throw IllegalArgumentException("No sms message status defined:$status")
     }
 }

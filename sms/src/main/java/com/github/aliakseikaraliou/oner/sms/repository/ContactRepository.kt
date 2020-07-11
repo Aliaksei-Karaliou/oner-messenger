@@ -2,14 +2,17 @@ package com.github.aliakseikaraliou.oner.sms.repository
 
 import android.content.ContentResolver
 import android.provider.ContactsContract
+import android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID
 import android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
 import android.provider.ContactsContract.Contacts.DISPLAY_NAME
 import android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER
 import android.provider.ContactsContract.Contacts._ID
 import com.github.aliakseikaraliou.oner.base.extentions.toWrapper
+import com.github.aliakseikaraliou.oner.base.models.PhoneNumber
 import com.github.aliakseikaraliou.oner.sms.models.contact.SmsUser
+import javax.inject.Inject
 
-class ContactRepository(val contentResolver: ContentResolver) {
+class ContactRepository @Inject constructor(private val contentResolver: ContentResolver) {
     fun loadAll(): List<SmsUser> {
         val uri = ContactsContract.Contacts.CONTENT_URI
         val users = mutableListOf<SmsUser>()
@@ -21,46 +24,72 @@ class ContactRepository(val contentResolver: ContentResolver) {
                 val list = mutableListOf<Map<String, String>>()
 
                 while (cursor.moveToNext()) {
-                    val toMap = cursor.toMap()
-
                     if (cursor.getBoolean(HAS_PHONE_NUMBER)) {
-                        val id = cursor.getInt(_ID)
-                        val displayName = cursor.getString(DISPLAY_NAME)
-                        val smsUser = SmsUser(
-                            id = id.toString(),
-                            displayName = displayName,
-                            phoneNumbers = loadPhoneNumbers(id)
-                        )
-                        users.add(smsUser)
+                        users.add(loadById(cursor.getLong(_ID)))
                     }
 
                 }
             }
-        return users
+        return users.sortedBy { it.fullName }
     }
 
-    private fun loadPhoneNumbers(id: Int): List<String> {
-        val phoneNumbers = mutableListOf<String>()
+    fun loadById(id: Long): SmsUser {
+        val phoneNumbers = mutableListOf<PhoneNumber>()
 
         val params = arrayOf(
-            NUMBER
+            NUMBER, DISPLAY_NAME, CONTACT_ID
         )
+
+        var displayName: String? = null
 
         contentResolver
             .query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                null,
-                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                params,
+                "$CONTACT_ID = ?",
                 arrayOf(id.toString()),
                 null
             )
             ?.toWrapper()
             ?.use { cursor ->
                 while (cursor.moveToNext()) {
-                    phoneNumbers.add(cursor.getString(NUMBER))
+                    displayName = cursor[DISPLAY_NAME]
+                    phoneNumbers.add(PhoneNumber.create(cursor[NUMBER]))
                 }
             }
 
-        return phoneNumbers
+        return SmsUser(
+            id = id,
+            fullName = displayName,
+            phoneNumbers = phoneNumbers
+        )
+    }
+
+    fun loadByAddress(phoneNumber: String): SmsUser? {
+        val phoneNumbers = mutableListOf<PhoneNumber>()
+
+        val params = arrayOf(
+            NUMBER, DISPLAY_NAME, _ID
+        )
+
+        var id: Long? = null
+
+        contentResolver
+            .query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                null,
+                "$NUMBER = ?",
+                arrayOf(phoneNumber),
+                null
+            )
+            ?.toWrapper()
+            ?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    id = cursor[CONTACT_ID]
+                    break
+                }
+            }
+
+        return id?.let { id -> loadById(id) }
     }
 }

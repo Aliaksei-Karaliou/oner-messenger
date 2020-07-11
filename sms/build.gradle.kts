@@ -1,6 +1,7 @@
 import com.github.aliakseikaraliou.oner.buildSrc.Dependencies.Android
 import com.github.aliakseikaraliou.oner.buildSrc.Dependencies.DAGGER
 import com.github.aliakseikaraliou.oner.buildSrc.Dependencies.Kotlin
+import com.github.aliakseikaraliou.oner.buildSrc.Dependencies.RXJAVA
 import com.github.aliakseikaraliou.oner.buildSrc.KAPT
 import com.github.aliakseikaraliou.oner.buildSrc.Project
 
@@ -30,6 +31,11 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
     }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
@@ -45,6 +51,8 @@ dependencies {
 
     implementation(DAGGER)
     kapt(KAPT.DAGGER)
+
+    implementation(RXJAVA)
 
     testImplementation("junit:junit:4.13")
     androidTestImplementation("androidx.test.ext:junit:1.1.1")
