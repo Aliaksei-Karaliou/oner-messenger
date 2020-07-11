@@ -9,13 +9,19 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class SmsMessageProvider @Inject constructor(val smsMessageRepository: SmsMessageRepository) {
-    fun loadSms(account: SmsAccount) = Single.create<List<SmsConversationPreview>> { emitter ->
-        GlobalScope.launch {
-            try {
-                emitter.onSuccess(smsMessageRepository.loadConversationPreviews(account))
-            } catch (t: Throwable) {
-                emitter.onError(t)
+    fun loadSms(account: SmsAccount, loadContacts: Boolean) =
+        Single.create<List<SmsConversationPreview>> { emitter ->
+            GlobalScope.launch {
+                try {
+                    emitter.onSuccess(
+                        smsMessageRepository.loadConversationPreviews(
+                            account,
+                            loadContacts
+                        )
+                    )
+                } catch (t: Throwable) {
+                    emitter.onError(t)
+                }
             }
         }
-    }
 }

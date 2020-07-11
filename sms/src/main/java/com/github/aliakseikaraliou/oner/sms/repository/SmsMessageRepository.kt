@@ -17,26 +17,30 @@ import com.github.aliakseikaraliou.oner.base.Constants.TYPE
 import com.github.aliakseikaraliou.oner.base.Constants._ID
 import com.github.aliakseikaraliou.oner.base.extentions.CursorWrapper
 import com.github.aliakseikaraliou.oner.base.extentions.toWrapper
+import com.github.aliakseikaraliou.oner.base.models.PhoneNumber
+import com.github.aliakseikaraliou.oner.base.models.contact.Contact
 import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.DRAFT
 import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.FAILED
 import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.OUTBOX
 import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.QUEUED
 import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.SENT
-import com.github.aliakseikaraliou.oner.base.repository.MessageRepository
 import com.github.aliakseikaraliou.oner.sms.models.SmsAccount
 import com.github.aliakseikaraliou.oner.sms.models.contact.SmsChannel
+import com.github.aliakseikaraliou.oner.sms.models.contact.SmsUser
 import com.github.aliakseikaraliou.oner.sms.models.conversation.SmsConversationPreview
 import com.github.aliakseikaraliou.oner.sms.models.message.SmsIncomingMessage
 import com.github.aliakseikaraliou.oner.sms.models.message.SmsOutgoingMessage
 import java.util.*
 import javax.inject.Inject
 
-class SmsMessageRepository @Inject constructor(private val contentResolver: ContentResolver) :
-    MessageRepository<SmsAccount> {
+class SmsMessageRepository @Inject constructor(private val contentResolver: ContentResolver) {
 
     private val contactRepository = ContactRepository(contentResolver)
 
-    override suspend fun loadConversationPreviews(account: SmsAccount): List<SmsConversationPreview> {
+    fun loadConversationPreviews(
+        account: SmsAccount,
+        loadContacts: Boolean
+    ): List<SmsConversationPreview> {
         val uri = Telephony.Sms.CONTENT_URI
         val params = arrayOf(_ID, ADDRESS, DATE, BODY, TYPE, THREAD_ID, READ)
 
@@ -48,11 +52,11 @@ class SmsMessageRepository @Inject constructor(private val contentResolver: Cont
             ?.use { cursor ->
                 while (cursor.moveToNext()) {
                     val smsMessage = when (cursor.getInt(TYPE)) {
-                        MESSAGE_TYPE_INBOX -> parseIncoming(cursor)
+                        MESSAGE_TYPE_INBOX -> parseIncoming(cursor, loadContacts)
                         MESSAGE_TYPE_SENT,
                         MESSAGE_TYPE_OUTBOX,
                         MESSAGE_TYPE_FAILED,
-                        MESSAGE_TYPE_QUEUED -> parseOutgoing(cursor)
+                        MESSAGE_TYPE_QUEUED -> parseOutgoing(cursor, loadContacts)
                         else -> throw IllegalArgumentException(
                             "No sms message status defined:${cursor.getInt(
                                 TYPE
@@ -66,10 +70,12 @@ class SmsMessageRepository @Inject constructor(private val contentResolver: Cont
         return messages
     }
 
-    private fun parseIncoming(cursor: CursorWrapper): SmsIncomingMessage {
+    private fun parseIncoming(
+        cursor: CursorWrapper,
+        loadContacts: Boolean
+    ): SmsIncomingMessage {
         val id = cursor.getLong(_ID)
-        val contact = contactRepository.loadByAddress(cursor.getString(ADDRESS))
-            ?: SmsChannel(cursor.getLong(THREAD_ID), cursor.getString(ADDRESS))
+        val contact = loadContact(cursor, loadContacts)
         val date = Date(cursor.getLong(DATE))
         val body = cursor.getString(BODY)
         val isRead = cursor.getBoolean(READ)
@@ -78,16 +84,34 @@ class SmsMessageRepository @Inject constructor(private val contentResolver: Cont
         return SmsIncomingMessage(id, contact, body, date, isRead, threadId)
     }
 
-    private fun parseOutgoing(cursor: CursorWrapper): SmsOutgoingMessage {
+    private fun parseOutgoing(
+        cursor: CursorWrapper,
+        loadContacts: Boolean
+    ): SmsOutgoingMessage {
         val id = cursor.getLong(_ID)
-        val contact = contactRepository.loadByAddress(cursor.getString(ADDRESS))
-            ?: SmsChannel(cursor.getLong(THREAD_ID), cursor.getString(ADDRESS))
+        val contact = loadContact(cursor, loadContacts)
         val date = Date(cursor.getLong(DATE))
         val body = cursor.getString(BODY)
         val status = parseMessageStatus(cursor.getInt(TYPE))
         val threadId = cursor.getInt(THREAD_ID)
 
         return SmsOutgoingMessage(id, contact, body, date, status, threadId)
+    }
+
+    private fun loadContact(
+        cursor: CursorWrapper,
+        loadContacts: Boolean
+    ): Contact {
+        var user: SmsUser? = null
+        val address = cursor.getString(ADDRESS)
+
+        user = if (loadContacts) {
+            contactRepository.loadByAddress(address)
+        } else {
+            SmsUser(0, null, listOf(PhoneNumber.create(address)))
+        }
+
+        return user ?: SmsChannel(cursor.getLong(THREAD_ID), address)
     }
 
     private fun parseMessageStatus(status: Int) = when (status) {
