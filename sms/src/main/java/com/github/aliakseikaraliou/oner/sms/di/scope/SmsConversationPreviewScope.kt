@@ -8,4 +8,4 @@ import kotlin.annotation.AnnotationTarget.FUNCTION
 @Scope
 @Retention(RUNTIME)
 @Target(CLASS, FUNCTION)
-annotation class SmsScope
+annotation class SmsConversationPreviewScope

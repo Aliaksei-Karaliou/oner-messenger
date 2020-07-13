@@ -1,55 +1,52 @@
 package com.github.aliakseikaraliou.oner.sms.ui.vm
 
-import android.Manifest.permission.READ_CONTACTS
-import android.Manifest.permission.READ_SMS
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.github.aliakseikaraliou.oner.base.exceptions.PermissionFailedException
+import com.github.aliakseikaraliou.oner.base.utils.permission.Permission.READ_CONTACTS
+import com.github.aliakseikaraliou.oner.base.utils.permission.Permission.READ_SMS
+import com.github.aliakseikaraliou.oner.base.utils.permission.PermissionObserver
 import com.github.aliakseikaraliou.oner.sms.models.SmsAccount
 import com.github.aliakseikaraliou.oner.sms.provider.SmsMessageProvider
 import com.github.aliakseikaraliou.oner.sms.ui.SmsConversationPreviewModel
+import com.github.aliakseikaraliou.oner.sms.ui.SmsConversationPreviewModel.DataLoaded
+import com.github.aliakseikaraliou.oner.sms.ui.SmsConversationPreviewModel.Failed
 
-class SmsConversationPreviewViewModel(val provider: SmsMessageProvider) : ViewModel() {
+class SmsConversationPreviewViewModel(
+    val provider: SmsMessageProvider,
+    val permissionObserver: PermissionObserver
+) : ViewModel() {
+
     val liveData = MutableLiveData<SmsConversationPreviewModel>()
 
-    private val permissions = mutableMapOf<String, Boolean>()
+    fun loadConversationPreviews() {
+        val permissions = permissionObserver.checkPermissions(READ_CONTACTS, READ_SMS)
 
-    fun validatePermissions() {
-        liveData.postValue(
-            SmsConversationPreviewModel.CheckPermission(
-                listOf(
-                    READ_SMS,
-                    READ_CONTACTS
-                )
-            )
-        )
-    }
+        if (permissions.isAllGranted()) {
+            loadConversationPreviewsWithGrantedPermissions(true)
+        } else {
+            val failed = permissions.failed()
 
-    fun permissionsMap(permissions: Map<String, Boolean>, requestFailed: Boolean) {
-        this.permissions.putAll(permissions)
+            permissionObserver.requirePermissions(failed) { result ->
+                permissions.combineWith(result)
 
-        if (requestFailed) {
-            val failedPermissions = permissions
-                .filter { !it.value }
-                .keys
-                .toList()
-
-            liveData.postValue(
-                SmsConversationPreviewModel.RequirePermission(failedPermissions)
-            )
-        }
-
-        if (permissions[READ_SMS] == true) {
-            loadPreviews()
+                if (permissions.isGranted(READ_SMS)) {
+                    val loadContacts = permissions.isGranted(READ_CONTACTS)
+                    loadConversationPreviewsWithGrantedPermissions(loadContacts)
+                } else {
+                    liveData.postValue(SmsConversationPreviewModel.Failed(PermissionFailedException(READ_SMS)))
+                }
+            }
         }
     }
 
-    private fun loadPreviews() {
+    private fun loadConversationPreviewsWithGrantedPermissions(loadContacts: Boolean) {
         provider
-            .loadSms(SmsAccount(), permissions[READ_CONTACTS] == true)
-            .subscribe({
-                liveData.postValue(SmsConversationPreviewModel.DataLoaded(it))
+            .loadSms(SmsAccount(), loadContacts)
+            .subscribe({ preview ->
+                liveData.postValue(DataLoaded(preview))
             }, {
-                liveData.postValue(SmsConversationPreviewModel.DataLoadingFailed(it))
+                liveData.postValue(Failed(it))
             })
     }
 }

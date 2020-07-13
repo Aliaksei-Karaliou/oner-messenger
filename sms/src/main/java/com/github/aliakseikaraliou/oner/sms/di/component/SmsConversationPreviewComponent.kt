@@ -2,7 +2,7 @@ package com.github.aliakseikaraliou.oner.sms.di.component
 
 import com.github.aliakseikaraliou.oner.base.di.context.component.ContextComponent
 import com.github.aliakseikaraliou.oner.sms.di.module.SmsConversationPreviewModule
-import com.github.aliakseikaraliou.oner.sms.di.scope.SmsScope
+import com.github.aliakseikaraliou.oner.sms.di.scope.SmsConversationPreviewScope
 import com.github.aliakseikaraliou.oner.sms.ui.SmsConversationPreviewFragment
 import dagger.BindsInstance
 import dagger.Component
@@ -11,7 +11,7 @@ import dagger.Component
     dependencies = [ContextComponent::class],
     modules = [SmsConversationPreviewModule::class]
 )
-@SmsScope
+@SmsConversationPreviewScope
 interface SmsConversationPreviewComponent {
 
     fun inject(fragment: SmsConversationPreviewFragment)
