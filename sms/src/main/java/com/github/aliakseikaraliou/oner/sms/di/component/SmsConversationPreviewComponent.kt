@@ -1,6 +1,7 @@
 package com.github.aliakseikaraliou.oner.sms.di.component
 
 import com.github.aliakseikaraliou.oner.base.di.context.component.ContextComponent
+import com.github.aliakseikaraliou.oner.base.di.context.provider.ContextProvider
 import com.github.aliakseikaraliou.oner.sms.di.module.SmsConversationPreviewModule
 import com.github.aliakseikaraliou.oner.sms.di.scope.SmsConversationPreviewScope
 import com.github.aliakseikaraliou.oner.sms.ui.SmsConversationPreviewFragment
@@ -8,7 +9,7 @@ import dagger.BindsInstance
 import dagger.Component
 
 @Component(
-    dependencies = [ContextComponent::class],
+    dependencies = [ContextProvider::class],
     modules = [SmsConversationPreviewModule::class]
 )
 @SmsConversationPreviewScope
@@ -19,7 +20,7 @@ interface SmsConversationPreviewComponent {
     @Component.Builder
     interface Builder {
 
-        fun context(contextComponent: ContextComponent): Builder
+        fun context(provider: ContextProvider): Builder
 
         @BindsInstance
         fun fragment(fragment: SmsConversationPreviewFragment): Builder

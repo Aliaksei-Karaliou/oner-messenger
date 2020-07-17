@@ -23,14 +23,17 @@ internal class FragmentPermissionObserver(private val fragment: Fragment) : Perm
         .toMap()
         .toMutableMap())
 
+    @Synchronized
     override fun requirePermissions(
         permissions: List<Permission>,
         callback: (result: PermissionResult) -> Unit
     ) {
 
-        var requestCode = (0..Int.MAX_VALUE).random()
+        val randomizer = { (0..REQUEST_CODE_LIMIT).random() }
+
+        var requestCode = randomizer()
         while (requests.containsKey(requestCode)) {
-            requestCode = (0..Int.MAX_VALUE).random()
+            requestCode = randomizer()
         }
 
         requests[requestCode] = callback
@@ -43,5 +46,9 @@ internal class FragmentPermissionObserver(private val fragment: Fragment) : Perm
             requests.remove(requestCode)
             callback.invoke(permissions)
         }
+    }
+
+    companion object {
+        private const val REQUEST_CODE_LIMIT = Short.MAX_VALUE
     }
 }

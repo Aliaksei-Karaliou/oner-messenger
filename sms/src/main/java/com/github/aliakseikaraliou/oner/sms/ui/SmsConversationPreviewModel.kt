@@ -4,5 +4,5 @@ import com.github.aliakseikaraliou.oner.base.models.conversation.ConversationPre
 
 sealed class SmsConversationPreviewModel {
     class DataLoaded(val data: List<ConversationPreview>) : SmsConversationPreviewModel()
-    class Failed(val t: Throwable) : SmsConversationPreviewModel()
+    class Failed(val throwable: Throwable) : SmsConversationPreviewModel()
 }

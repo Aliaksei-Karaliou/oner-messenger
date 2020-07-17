@@ -15,7 +15,6 @@ class SmsMessageProvider @Inject constructor(val smsMessageRepository: SmsMessag
                 try {
                     emitter.onSuccess(
                         smsMessageRepository.loadConversationPreviews(
-                            account,
                             loadContacts
                         )
                     )

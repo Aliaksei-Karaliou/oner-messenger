@@ -16,7 +16,13 @@ class CursorWrapper(private val cursor: Cursor) : Closeable {
 
     fun moveToNext() = cursor.moveToNext()
 
-    fun getString(name: String): String = cursor.getString(getColumnIndex(name))
+    fun getString(name: String): String {
+        return cursor.getString(getColumnIndex(name))
+    }
+
+    fun getStringOrNull(name: String): String? {
+        return cursor.getString(getColumnIndex(name))
+    }
 
     fun getInt(name: String) = cursor.getInt(getColumnIndex(name))
 

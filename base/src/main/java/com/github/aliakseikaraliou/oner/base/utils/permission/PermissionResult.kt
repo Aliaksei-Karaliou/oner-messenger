@@ -12,7 +12,7 @@ class PermissionResult(private var permissionMap: Map<Permission, PermissionStat
     fun isAllGranted() = permissionMap.values.all { it == GRANTED }
 
     fun failed() = permissionMap
-        .filter { it.value == GRANTED }
+        .filter { it.value != GRANTED }
         .keys
         .toList()
 

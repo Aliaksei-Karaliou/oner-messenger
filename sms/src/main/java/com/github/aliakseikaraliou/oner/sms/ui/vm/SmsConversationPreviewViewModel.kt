@@ -13,8 +13,8 @@ import com.github.aliakseikaraliou.oner.sms.ui.SmsConversationPreviewModel.DataL
 import com.github.aliakseikaraliou.oner.sms.ui.SmsConversationPreviewModel.Failed
 
 class SmsConversationPreviewViewModel(
-    val provider: SmsMessageProvider,
-    val permissionObserver: PermissionObserver
+    private val provider: SmsMessageProvider,
+    private val permissionObserver: PermissionObserver
 ) : ViewModel() {
 
     val liveData = MutableLiveData<SmsConversationPreviewModel>()

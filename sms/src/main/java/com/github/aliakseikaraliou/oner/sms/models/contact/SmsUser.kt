@@ -6,6 +6,7 @@ import com.github.aliakseikaraliou.oner.base.models.contact.User
 data class SmsUser(
     override val id: Long,
     val fullName: String?,
+    override val photoUrl: String?,
     val phoneNumbers: List<PhoneNumber>
 ) : SmsContact, User {
 

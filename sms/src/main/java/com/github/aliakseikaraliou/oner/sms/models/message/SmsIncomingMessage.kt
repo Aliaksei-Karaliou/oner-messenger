@@ -7,6 +7,7 @@ import java.util.*
 data class SmsIncomingMessage(
     override val id: Long,
     override val contact: Contact,
+    override val address: String,
     override val text: String,
     override val date: Date,
     override val isRead: Boolean,

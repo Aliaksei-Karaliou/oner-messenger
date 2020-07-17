@@ -1,7 +1,12 @@
 package com.github.aliakseikaraliou.oner.sms.repository
 
+import android.annotation.SuppressLint
 import android.content.ContentResolver
+import android.provider.BaseColumns._ID
 import android.provider.Telephony
+import android.provider.Telephony.TextBasedSmsColumns.ADDRESS
+import android.provider.Telephony.TextBasedSmsColumns.BODY
+import android.provider.Telephony.TextBasedSmsColumns.DATE
 import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_DRAFT
 import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_FAILED
 import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_INBOX
@@ -10,11 +15,7 @@ import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_QUEUED
 import android.provider.Telephony.TextBasedSmsColumns.MESSAGE_TYPE_SENT
 import android.provider.Telephony.TextBasedSmsColumns.READ
 import android.provider.Telephony.TextBasedSmsColumns.THREAD_ID
-import com.github.aliakseikaraliou.oner.base.Constants.ADDRESS
-import com.github.aliakseikaraliou.oner.base.Constants.BODY
-import com.github.aliakseikaraliou.oner.base.Constants.DATE
-import com.github.aliakseikaraliou.oner.base.Constants.TYPE
-import com.github.aliakseikaraliou.oner.base.Constants._ID
+import android.provider.Telephony.TextBasedSmsColumns.TYPE
 import com.github.aliakseikaraliou.oner.base.extentions.CursorWrapper
 import com.github.aliakseikaraliou.oner.base.extentions.toWrapper
 import com.github.aliakseikaraliou.oner.base.models.PhoneNumber
@@ -24,7 +25,6 @@ import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.FAILED
 import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.OUTBOX
 import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.QUEUED
 import com.github.aliakseikaraliou.oner.base.models.message.MessageStatus.SENT
-import com.github.aliakseikaraliou.oner.sms.models.SmsAccount
 import com.github.aliakseikaraliou.oner.sms.models.contact.SmsChannel
 import com.github.aliakseikaraliou.oner.sms.models.contact.SmsUser
 import com.github.aliakseikaraliou.oner.sms.models.conversation.SmsConversationPreview
@@ -33,12 +33,12 @@ import com.github.aliakseikaraliou.oner.sms.models.message.SmsOutgoingMessage
 import java.util.*
 import javax.inject.Inject
 
+@SuppressLint("Recycle")
 class SmsMessageRepository @Inject constructor(private val contentResolver: ContentResolver) {
 
     private val contactRepository = ContactRepository(contentResolver)
 
     fun loadConversationPreviews(
-        account: SmsAccount,
         loadContacts: Boolean
     ): List<SmsConversationPreview> {
         val uri = Telephony.Sms.CONTENT_URI
@@ -76,12 +76,13 @@ class SmsMessageRepository @Inject constructor(private val contentResolver: Cont
     ): SmsIncomingMessage {
         val id = cursor.getLong(_ID)
         val contact = loadContact(cursor, loadContacts)
+        val address = cursor.getString(ADDRESS)
         val date = Date(cursor.getLong(DATE))
         val body = cursor.getString(BODY)
         val isRead = cursor.getBoolean(READ)
         val threadId = cursor.getInt(THREAD_ID)
 
-        return SmsIncomingMessage(id, contact, body, date, isRead, threadId)
+        return SmsIncomingMessage(id, contact, address, body, date, isRead, threadId)
     }
 
     private fun parseOutgoing(
@@ -90,25 +91,25 @@ class SmsMessageRepository @Inject constructor(private val contentResolver: Cont
     ): SmsOutgoingMessage {
         val id = cursor.getLong(_ID)
         val contact = loadContact(cursor, loadContacts)
+        val address = cursor.getString(ADDRESS)
         val date = Date(cursor.getLong(DATE))
         val body = cursor.getString(BODY)
         val status = parseMessageStatus(cursor.getInt(TYPE))
         val threadId = cursor.getInt(THREAD_ID)
 
-        return SmsOutgoingMessage(id, contact, body, date, status, threadId)
+        return SmsOutgoingMessage(id, contact, address, body, date, status, threadId)
     }
 
     private fun loadContact(
         cursor: CursorWrapper,
         loadContacts: Boolean
     ): Contact {
-        var user: SmsUser? = null
         val address = cursor.getString(ADDRESS)
 
-        user = if (loadContacts) {
+        val user = if (loadContacts) {
             contactRepository.loadByAddress(address)
         } else {
-            SmsUser(0, null, listOf(PhoneNumber.create(address)))
+            SmsUser(0, null, null, listOf(PhoneNumber.create(address)))
         }
 
         return user ?: SmsChannel(cursor.getLong(THREAD_ID), address)

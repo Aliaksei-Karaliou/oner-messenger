@@ -1,3 +1,4 @@
+import com.github.aliakseikaraliou.oner.buildSrc.Dependencies.Android
 import com.github.aliakseikaraliou.oner.buildSrc.Dependencies.DAGGER
 import com.github.aliakseikaraliou.oner.buildSrc.Dependencies.Kotlin
 import com.github.aliakseikaraliou.oner.buildSrc.KAPT
@@ -38,6 +39,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.1.0")
     implementation("androidx.lifecycle:lifecycle-extensions:2.2.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.2.0")
+    implementation(Android.RECYCLER)
 
     implementation(DAGGER)
     kapt(KAPT.DAGGER)

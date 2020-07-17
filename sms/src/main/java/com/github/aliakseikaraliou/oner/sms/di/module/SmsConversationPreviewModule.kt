@@ -23,12 +23,6 @@ class SmsConversationPreviewModule {
 
     @SmsConversationPreviewScope
     @Provides
-    fun viewModel(
-        fragment: SmsConversationPreviewFragment,
-        provider: SmsConversationPreviewViewModelProviderFactory
-    ) =
-        ViewModelProvider(
-            fragment,
-            provider
-        ).get(SmsConversationPreviewViewModel::class.java)
+    fun viewModel(fragment: SmsConversationPreviewFragment, provider: SmsConversationPreviewViewModelProviderFactory) =
+        ViewModelProvider(fragment, provider).get(SmsConversationPreviewViewModel::class.java)
 }

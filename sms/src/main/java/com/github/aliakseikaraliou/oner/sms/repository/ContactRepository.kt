@@ -3,11 +3,14 @@ package com.github.aliakseikaraliou.oner.sms.repository
 import android.content.ContentResolver
 import android.provider.ContactsContract
 import android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID
+import android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI
 import android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
 import android.provider.ContactsContract.Contacts.DISPLAY_NAME
 import android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER
+import android.provider.ContactsContract.Contacts.PHOTO_URI
 import android.provider.ContactsContract.Contacts._ID
 import com.github.aliakseikaraliou.oner.base.extentions.toWrapper
+import com.github.aliakseikaraliou.oner.base.extentions.useReturning
 import com.github.aliakseikaraliou.oner.base.models.PhoneNumber
 import com.github.aliakseikaraliou.oner.sms.models.contact.SmsUser
 import javax.inject.Inject
@@ -21,7 +24,7 @@ class ContactRepository @Inject constructor(private val contentResolver: Content
             .query(uri, null, null, null, null)
             ?.toWrapper()
             ?.use { cursor ->
-                val list = mutableListOf<Map<String, String>>()
+                mutableListOf<Map<String, String>>()
 
                 while (cursor.moveToNext()) {
                     if (cursor.getBoolean(HAS_PHONE_NUMBER)) {
@@ -37,14 +40,15 @@ class ContactRepository @Inject constructor(private val contentResolver: Content
         val phoneNumbers = mutableListOf<PhoneNumber>()
 
         val params = arrayOf(
-            NUMBER, DISPLAY_NAME, CONTACT_ID
+            NUMBER, DISPLAY_NAME, CONTACT_ID, PHOTO_URI
         )
 
         var displayName: String? = null
+        var photoUrl: String? = null
 
         contentResolver
             .query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                CONTENT_URI,
                 params,
                 "$CONTACT_ID = ?",
                 arrayOf(id.toString()),
@@ -54,6 +58,7 @@ class ContactRepository @Inject constructor(private val contentResolver: Content
             ?.use { cursor ->
                 while (cursor.moveToNext()) {
                     displayName = cursor[DISPLAY_NAME]
+                    photoUrl = cursor.getStringOrNull(PHOTO_URI)
                     phoneNumbers.add(PhoneNumber.create(cursor[NUMBER]))
                 }
             }
@@ -61,35 +66,21 @@ class ContactRepository @Inject constructor(private val contentResolver: Content
         return SmsUser(
             id = id,
             fullName = displayName,
-            phoneNumbers = phoneNumbers
+            phoneNumbers = phoneNumbers,
+            photoUrl = photoUrl
         )
     }
 
     fun loadByAddress(phoneNumber: String): SmsUser? {
-        val phoneNumbers = mutableListOf<PhoneNumber>()
-
         val params = arrayOf(
-            NUMBER, DISPLAY_NAME, _ID
+            CONTACT_ID
         )
 
-        var id: Long? = null
-
-        contentResolver
-            .query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                null,
-                "$NUMBER = ?",
-                arrayOf(phoneNumber),
-                null
-            )
+        return contentResolver
+            .query(CONTENT_URI, params, "$NUMBER = ?", arrayOf(phoneNumber), null)
             ?.toWrapper()
-            ?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    id = cursor[CONTACT_ID]
-                    break
-                }
-            }
-
-        return id?.let { id -> loadById(id) }
+            ?.takeIf { it.moveToFirst() }
+            ?.useReturning { it.getLong(CONTACT_ID) }
+            ?.let { id -> loadById(id) }
     }
 }
